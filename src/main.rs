@@ -1,9 +1,13 @@
-use std::{fs::{self, File}, io::Write, path::Path};
+use std::{
+    fs::{self, File},
+    io::Write,
+    path::Path,
+};
 
 use actix_web::{
     middleware,
     web::{self, Query},
-    App, Error, HttpResponse,HttpRequest, HttpServer,
+    App, Error, HttpRequest, HttpResponse, HttpServer,
 };
 use chrono::prelude::*;
 use futures::StreamExt;
@@ -69,7 +73,12 @@ async fn save_file(
 }
 
 fn index(req: HttpRequest) -> HttpResponse {
-    let called_path : String = req.match_info().get("path").unwrap().parse::<String>().unwrap();
+    let called_path: String = req
+        .match_info()
+        .get("path")
+        .unwrap()
+        .parse::<String>()
+        .unwrap();
     let mut from = String::from("./");
     from.push_str(&called_path);
     let mut html = String::new();
@@ -77,20 +86,32 @@ fn index(req: HttpRequest) -> HttpResponse {
         let paths = fs::read_dir(from).unwrap();
         for path in paths {
             let path_buf = path.unwrap().path();
-            let path_display = path_buf.display();
-            html.push_str(format!("<a href='{}'>{}</a><br/>", path_display, path_buf.file_name().unwrap().to_owned().into_string().unwrap()).as_str());
+            let path_display: String = path_buf.display().to_string().chars().skip(1).collect();
+
+            html.push_str(
+                format!(
+                    "<a href='{}'>{}</a><br/>",
+                    path_display,
+                    path_buf
+                        .file_name()
+                        .unwrap()
+                        .to_owned()
+                        .into_string()
+                        .unwrap()
+                )
+                .as_str(),
+            );
         }
     } else {
         html = match fs::read_to_string(&from) {
             Ok(x) => x,
-            Err(x) => from,
+            Err(_) => from,
         };
 
         return HttpResponse::Ok()
-        .content_type("text/plain; charset=utf-8")
-        .body(html);
+            .content_type("text/plain; charset=utf-8")
+            .body(html);
     }
-
 
     HttpResponse::Ok()
         .content_type("text/html; charset=utf-8")
