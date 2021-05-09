@@ -28,33 +28,26 @@ async fn save_file(
         None => "",
     };
 
-    // let path : String;
     let mut f: File;
-    let path: String;
     let response: String;
+    let local: DateTime<Local> = Local::now();
     if dir.is_empty() {
-        let local: DateTime<Local> = Local::now();
-        path = format!(
+        let path = format!(
             "{}/{}",
             local.format("%Y-%m-%d").to_string(),
             local.format("%H:%M:%S%.3f").to_string()
         );
         response = path.clone();
-        let prefix = std::path::Path::new(&path).parent().unwrap();
-        std::fs::create_dir_all(prefix).unwrap();
-        f = web::block(|| std::fs::File::create(path)).await.unwrap();
+        f = create_path(path).await;
     } else {
-        let local: DateTime<Local> = Local::now();
-        path = format!(
+        let path = format!(
             "{}/{}/{}",
             dir,
             local.format("%Y-%m-%d").to_string(),
             local.format("%H:%M:%S%.3f").to_string()
         );
         response = path.clone();
-        let prefix = std::path::Path::new(&path).parent().unwrap();
-        std::fs::create_dir_all(prefix).unwrap();
-        f = web::block(|| std::fs::File::create(path)).await.unwrap();
+        f = create_path(path).await;
     }
 
     let mut bytes = web::BytesMut::new();
@@ -70,6 +63,12 @@ async fn save_file(
     web::block(move || f.write_all(&bytes).map(|_| f)).await?;
 
     Ok(HttpResponse::Ok().body(response))
+}
+
+async fn create_path(path: String) -> File {
+    let prefix = std::path::Path::new(&path).parent().unwrap();
+    std::fs::create_dir_all(prefix).unwrap();
+    web::block(|| std::fs::File::create(path)).await.unwrap()
 }
 
 fn index(req: HttpRequest) -> HttpResponse {
