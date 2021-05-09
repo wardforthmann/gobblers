@@ -1,7 +1,7 @@
 use std::{
     fs::{self, File},
     io::Write,
-    path::Path,
+    path::{Path, PathBuf},
 };
 
 use actix_web::{
@@ -79,11 +79,10 @@ fn index(req: HttpRequest) -> HttpResponse {
         .unwrap()
         .parse::<String>()
         .unwrap();
-    let mut from = String::from("./");
-    from.push_str(&called_path);
-    let mut html = String::new();
-    if Path::new(&from).is_dir() {
-        let paths = fs::read_dir(from).unwrap();
+    let path_buf = PathBuf::new().join("./").join(called_path);
+    if Path::new(&path_buf).is_dir() {
+        let mut html = String::new();
+        let paths = fs::read_dir(path_buf).unwrap();
         for path in paths {
             let path_buf = path.unwrap().path();
             let path_display: String = path_buf.display().to_string().chars().skip(1).collect();
@@ -102,20 +101,18 @@ fn index(req: HttpRequest) -> HttpResponse {
                 .as_str(),
             );
         }
+        HttpResponse::Ok()
+            .content_type("text/html; charset=utf-8")
+            .body(html)
     } else {
-        html = match fs::read_to_string(&from) {
+        let html = match fs::read_to_string(&path_buf) {
             Ok(x) => x,
-            Err(_) => from,
+            Err(_) => path_buf.to_str().unwrap().to_string(),
         };
-
-        return HttpResponse::Ok()
+        HttpResponse::Ok()
             .content_type("text/plain; charset=utf-8")
-            .body(html);
+            .body(html)
     }
-
-    HttpResponse::Ok()
-        .content_type("text/html; charset=utf-8")
-        .body(html)
 }
 
 #[actix_web::main]
