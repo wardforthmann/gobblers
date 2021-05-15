@@ -4,11 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use actix_web::{
-    middleware,
-    web::{self, Query},
-    App, Error, HttpRequest, HttpResponse, HttpServer,
-};
+use actix_web::{App, Error, HttpRequest, HttpResponse, HttpServer, error::BlockingError, middleware, web::{self, Query}};
 use chrono::prelude::*;
 use futures::StreamExt;
 use serde::Deserialize;
@@ -38,7 +34,7 @@ async fn save_file(
             local.format("%H:%M:%S%.3f").to_string()
         );
         response = path.clone();
-        f = create_path(path).await;
+        f = create_path(path).await?;
     } else {
         let path = format!(
             "{}/{}/{}",
@@ -47,7 +43,7 @@ async fn save_file(
             local.format("%H:%M:%S%.3f").to_string()
         );
         response = path.clone();
-        f = create_path(path).await;
+        f = create_path(path).await?;
     }
 
     let mut bytes = web::BytesMut::new();
@@ -65,10 +61,10 @@ async fn save_file(
     Ok(HttpResponse::Ok().body(response))
 }
 
-async fn create_path(path: String) -> File {
+async fn create_path(path: String) -> Result<File, BlockingError<std::io::Error>> {
     let prefix = std::path::Path::new(&path).parent().unwrap();
     std::fs::create_dir_all(prefix).unwrap();
-    web::block(|| std::fs::File::create(path)).await.unwrap()
+    web::block(|| std::fs::File::create(path)).await
 }
 
 fn index(req: HttpRequest) -> HttpResponse {
