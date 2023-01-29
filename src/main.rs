@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use actix_web::{App, Error, HttpRequest, HttpResponse, HttpServer, error::BlockingError, middleware, web::{self, Query}};
+use actix_web::{App, Error, HttpRequest, HttpResponse, HttpServer, middleware, web::{self, Query}};
 use chrono::prelude::*;
 use futures::StreamExt;
 use serde::Deserialize;
@@ -17,7 +17,7 @@ struct Info {
 async fn save_file(
     mut payload: web::Payload,
     dir: Query<Info>,
-    req: web::HttpRequest,
+    req: HttpRequest,
 ) -> Result<HttpResponse, Error> {
     let dir = match &dir.dir {
         Some(x) => x,
@@ -61,13 +61,14 @@ async fn save_file(
     Ok(HttpResponse::Ok().body(response))
 }
 
-async fn create_path(path: String) -> Result<File, BlockingError<std::io::Error>> {
+async fn create_path(path: String) -> Result<File, std::io::Error> {
     let prefix = std::path::Path::new(&path).parent().unwrap();
-    std::fs::create_dir_all(prefix).unwrap();
-    web::block(|| std::fs::File::create(path)).await
+    fs::create_dir_all(prefix).unwrap();
+    let result = web::block(|| File::create(path)).await;
+    result.unwrap()
 }
 
-fn index(req: HttpRequest) -> HttpResponse {
+async fn index(req: HttpRequest) -> HttpResponse {
     let called_path: String = req
         .match_info()
         .get("path")
@@ -93,7 +94,7 @@ fn index(req: HttpRequest) -> HttpResponse {
                         .into_string()
                         .unwrap()
                 )
-                .as_str(),
+                    .as_str(),
             );
         }
         HttpResponse::Ok()
@@ -124,7 +125,7 @@ async fn main() -> std::io::Result<()> {
                 .route(web::post().to(save_file)),
         )
     })
-    .bind(ip)?
-    .run()
-    .await
+        .bind(ip)?
+        .run()
+        .await
 }
